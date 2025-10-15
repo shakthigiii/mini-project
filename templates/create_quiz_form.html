@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Create & Add Questions</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  </head>
+  <body>
+    <div id="root">
+      <div>
+        <div class="min-h-screen bg-gray-900 text-white">
+          <header class="bg-gray-800 border-b border-gray-700 p-6">
+            <h1 class="text-3xl font-bold text-blue-400">Teacher Dashboard</h1>
+            <p class="text-gray-300 mt-2">
+              Create and manage secure online exams | Welcome, {{ current_user.username }}
+            </p>
+            <a href="{{ url_for('logout') }}"
+               class="fixed top-4 right-4 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors">
+              Logout
+            </a>
+          </header>
+          <div class="flex">
+            <nav class="w-64 bg-gray-800 min-h-screen p-4">
+              <div class="space-y-2">
+                <a href="{{ url_for('create_quiz_form') }}"
+                   class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors bg-blue-600">
+                  <i class="fas fa-plus"></i>
+                  <span>Create Exam</span>
+                </a>
+                <a href="{{ url_for('faculty_dashboard') }}"
+                   class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors bg-gray-700 hover:bg-gray-600">
+                  <i class="fas fa-book-open"></i>
+                  <span>Manage Exams</span>
+                </a>
+              </div>
+            </nav>
+            <main class="flex-1 p-6">
+              <div class="space-y-6">
+                <h2 class="text-2xl font-bold mb-6">Create New Exam and Add Questions</h2>
+                
+                <form method="POST" action="{{ url_for('create_quiz_process') }}" id="quiz-creation-form">
+                  <input type="hidden" name="questions_json" id="questions-json-input" value="[]" />
+                  
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 p-4 bg-gray-800 rounded-lg">
+                    <div>
+                      <label class="block text-sm font-medium mb-2">Exam Title</label>
+                      <input type="text" name="title" id="exam-title" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="Enter exam title" required />
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium mb-2">Subject</label>
+                      <input type="text" name="subject" id="exam-subject" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="Enter subject" required />
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium mb-2">Duration (minutes)</label>
+                      <input type="number" name="duration" id="exam-duration" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500" min="1" value="60" required />
+                    </div>
+                  </div>
+
+                  <div class="bg-gray-800 p-6 rounded-lg mb-8">
+                    <h3 class="text-xl font-semibold mb-4">Add New Question</h3>
+                    <div class="questionForm space-y-4">
+                      <div>
+                        <label class="block text-sm font-medium mb-2">Question</label>
+                        <textarea id="question-text" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500" rows="3" placeholder="Enter your question" ></textarea>
+                      </div>
+                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {% for i in range(4) %}
+                        <div>
+                          <label class="block text-sm font-medium mb-2">Option {{ i+1 }} {% if i == 0 %}(Correct Default){% endif %}</label>
+                          <div class="flex items-center space-x-2">
+                            <input type="radio" name="correctAnswer" value="{{ i }}" class="text-blue-600" {% if i == 0 %}checked{% endif %} />
+                            <input type="text" id="opt-{{ i+1 }}" class="opt-input flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="Option {{ i+1 }}" />
+                          </div>
+                        </div>
+                        {% endfor %}
+                      </div>
+                      <div>
+                        <label class="block text-sm font-medium mb-2">Difficulty</label>
+                        <select id="question-difficulty" class="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500">
+                          <option value="0">Easy</option>
+                          <option value="1">Medium</option>
+                          <option value="2">Hard</option>
+                        </select>
+                      </div>
+                      <button type="button" id="add-question-btn" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg transition-colors">
+                        Add Question
+                      </button>
+                      
+                    </div>
+                  </div>
+                  
+                  <div class="bg-gray-800 p-6 rounded-lg mb-8">
+                    <h3 id="questions-added-count" class="text-xl font-semibold mb-4">Questions Added (0)</h3>
+                    <div id="question-list" class="space-y-2 max-h-64 overflow-y-auto">
+                      </div>
+                  </div>
+                  
+                  <button type="submit" id="create-exam-submit" disabled class="w-full px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg transition-colors text-lg font-semibold">
+                    Create Exam (Requires minimum 1 question)
+                  </button>
+                </form>
+              </div>
+            </main>
+          </div>
+        </div>
+      </div>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+  </body>
+</html>

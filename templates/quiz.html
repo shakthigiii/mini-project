@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ quiz.title }} - Exam</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  </head>
+  <body class="bg-gray-900 text-white min-h-screen">
+
+    <div id="quiz-content" style="display: none;">
+      <header class="bg-gray-800 border-b border-gray-700 p-6">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center">
+            <h1 class="text-3xl font-bold text-blue-400">{{ quiz.title }}</h1>
+            <span class="ml-4 text-gray-400">Duration: {{ quiz.duration_minutes }} mins</span>
+          </div>
+          <div>
+            <span class="text-gray-300 mr-4">Welcome, {{ current_user.username }}</span>
+            <a href="{{ url_for('logout') }}"
+              class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors">
+              Logout
+            </a>
+          </div>
+        </div>
+      </header>
+      
+      <div class="p-6">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold">Question</h2>
+          <div id="timer" class="text-xl font-bold text-red-400">Time Left: 00:00</div>
+        </div>
+        
+        <form id="quiz-form" method="POST" action="{{ url_for('submit_quiz', quiz_id=quiz.id) }}">
+          {% for question in questions %}
+            <div class="bg-gray-800 p-6 rounded-lg mb-4" data-question-id="{{ question.id }}">
+              <p class="text-lg mb-4">{{ loop.index }}. {{ question.question_text }}</p>
+              <div class="space-y-2">
+                {% for option in question.options %}
+                  <label class="block p-3 rounded-lg bg-gray-700/50 hover:bg-gray-700 cursor-pointer transition-colors">
+                    <input type="radio" name="question_{{ question.id }}" value="{{ option }}" required class="mr-2"> {{ option }}
+                  </label>
+                {% endfor %}
+              </div>
+            </div>
+          {% endfor %}
+          <button type="submit" class="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors text-lg font-semibold mt-4">
+            Submit Quiz
+          </button>
+        </form>
+      </div>
+    </div>
+    
+    <div id="fullscreen-overlay" 
+         class="fixed inset-0 bg-gray-900/95 z-50 flex flex-col items-center justify-center space-y-6">
+        <h2 class="text-3xl font-bold text-red-400">Security Requirement</h2>
+        <p class="text-gray-300">To start the exam, you must activate fullscreen mode.</p>
+        <button id="start-exam-button" class="px-8 py-4 bg-green-600 hover:bg-green-700 rounded-lg text-xl font-semibold transition-colors">
+            Click Here to Start Exam in Fullscreen
+        </button>
+    </div>
+    
+    <script>
+    // --- CONSTANTS AND STATE ---
+    const quizDuration = {{ quiz.duration_minutes | tojson }};
+    const overlay = document.getElementById('fullscreen-overlay');
+    const quizContent = document.getElementById('quiz-content'); // TARGET THE MAIN QUIZ CONTENT
+    const startButton = document.getElementById('start-exam-button');
+    let fullscreen_violations = 0; 
+    const MAX_FULLSCREEN_VIOLATIONS = 1; 
+
+    // --- Core Fullscreen Logic ---
+    function enterFullscreen() {
+        const doc = document.documentElement; 
+        if (doc.requestFullscreen) {
+            doc.requestFullscreen().catch(err => {
+                console.error("Fullscreen request failed:", err);
+            });
+        } else if (doc.webkitRequestFullscreen) {
+            doc.webkitRequestFullscreen();
+        } else if (doc.msRequestFullscreen) {
+            doc.msRequestFullscreen();
+        }
+    }
+    
+    // FIX: Fullscreen Change Listener (The most critical fix)
+    document.addEventListener('fullscreenchange', function() {
+        if (!document.fullscreenElement) {
+            fullscreen_violations++;
+
+            if (fullscreen_violations > MAX_FULLSCREEN_VIOLATIONS) {
+                // CRITICAL ACTION: Final Submission
+                document.getElementById('quiz-form').submit();
+            } else {
+                // FIX 1: HIDE QUIZ CONTENT AND SHOW OVERLAY
+                // This visually ensures the user cannot continue the quiz in browser mode.
+                quizContent.style.display = 'none'; 
+                overlay.style.display = 'flex'; 
+                
+                // FIX 2: Attach the RE-ENTRY function to the overlay button
+                // When the user clicks this button, the cycle starts over, granting new permission.
+                startButton.onclick = startQuiz;
+            }
+        }
+    });
+
+    // FIX: Key blocking function must be called immediately
+    function blockControlKeys() {
+        document.addEventListener('keydown', function(e) {
+            if (e.keyCode === 27 || e.ctrlKey || e.shiftKey) {
+                e.preventDefault();
+                return;
+            }
+        });
+    }
+    
+    // --- Anti-Cheating Function Definitions (Consolidated into one place) ---
+    function startTimer(durationMinutes) {
+        // ... (Your existing startTimer logic) ...
+        let timeLeft = sessionStorage.getItem('timeLeft') || durationMinutes * 60;
+        const timerElement = document.getElementById('timer');
+
+        const timer = setInterval(() => {
+            if (timeLeft <= 0) {
+                clearInterval(timer);
+                alert('Time is up! The quiz will now be submitted.');
+                document.getElementById('quiz-form').submit();
+            } else {
+                const minutes = Math.floor(timeLeft / 60);
+                const seconds = timeLeft % 60;
+                timerElement.innerText = `Time Left: ${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+                timeLeft--;
+                sessionStorage.setItem('timeLeft', timeLeft);
+            }
+        }, 1000);
+    }
+    
+    function setupTabSwitchingDetection() {
+        // ... (Your existing setupTabSwitchingDetection logic) ...
+        let warnings = parseInt(sessionStorage.getItem('warnings')) || 0;
+        const maxWarnings = 3;
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') {
+                warnings++;
+                sessionStorage.setItem('warnings', warnings);
+                if (warnings >= maxWarnings) {
+                    alert('Warning: You have switched tabs too many times. The quiz will be submitted.');
+                    document.getElementById('quiz-form').submit();
+                } else {
+                    alert(`Warning ${warnings}/${maxWarnings}: Tab switching is not allowed. Further attempts will result in quiz submission.`);
+                }
+            }
+        });
+    }
+
+    function disableCopyPaste() {
+        // ... (Your existing disableCopyPaste logic) ...
+        document.addEventListener('copy', (e) => e.preventDefault());
+        document.addEventListener('paste', (e) => e.preventDefault());
+        document.addEventListener('contextmenu', (e) => e.preventDefault());
+    }
+
+    function setupForcedSubmission() {
+        // ... (Your existing setupForcedSubmission logic) ...
+        window.addEventListener('beforeunload', function(e) {
+            e.preventDefault();
+            e.returnValue = ''; 
+            document.getElementById('quiz-form').submit();
+        });
+    }
+
+    // --- MAIN QUIZ START FUNCTION ---
+    function startQuiz() {
+        enterFullscreen(); 
+        quizContent.style.display = 'block'; 
+        overlay.style.display = 'none';
+
+        // Start all anti-cheating measures after the quiz has truly started
+        startTimer(quizDuration);
+        setupTabSwitchingDetection();
+        disableCopyPaste();
+        setupForcedSubmission();
+        
+        // Return false to stop the double-firing that sometimes happens
+        return false;
+    }
+
+
+    // --- FINAL INITIALIZATION ---
+    blockControlKeys(); // Lock keyboard immediately
+    startButton.addEventListener('click', startQuiz); // Attach start function to button
+    
+    // Check if the page is being restored from bfcache
+    window.addEventListener('pageshow', function(event) {
+        if (event.persisted) {
+            window.location.reload(); 
+        }
+    });
+
+    </script>
+  </body>
+</html>

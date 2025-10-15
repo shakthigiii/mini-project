@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Add Students to {{ class_obj.name }}</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <div class="max-w-3xl mx-auto p-6">
+        <header class="bg-gray-800 p-4 rounded-lg shadow-lg mb-6 flex justify-between items-center">
+            <h1 class="text-xl font-bold text-yellow-400">Add Students to: {{ class_obj.name }}</h1>
+            <a href="{{ url_for('admin_dashboard') }}" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors">
+                <i class="fas fa-arrow-left"></i> Back
+            </a>
+        </header>
+
+        <form method="POST" class="bg-gray-800 p-6 rounded-lg shadow-xl">
+            
+            <h3 class="text-lg font-semibold mb-3">Filter by Batch</h3>
+            <div id="batch-buttons" class="flex flex-wrap gap-2 mb-6 border-b border-gray-700 pb-4">
+                {% set unique_batches = students | map(attribute='batch') | unique | list %}
+                {% for batch in unique_batches %}
+                    <button type="button" onclick="filterStudents('{{ batch }}', event)" 
+                            class="batch-btn px-3 py-1 bg-gray-700 hover:bg-yellow-600 rounded-full text-sm">
+                        {{ batch }}
+                    </button>
+                {% endfor %}
+            </div>
+
+            <h3 class="text-lg font-semibold mb-3">Select Students</h3>
+            {% if students %}
+                <ul id="student-list" class="space-y-2 max-h-96 overflow-y-auto pr-2 mb-6">
+                    {% for student in students %}
+                        <li class="student-item bg-gray-700 p-3 rounded-md" 
+                            data-batch="{{ student.batch }}" 
+                            style="display: none;">
+                            <label class="flex items-center space-x-3">
+                                <input type="checkbox" name="student_ids" value="{{ student.id }}" 
+                                       class="form-checkbox text-blue-500 rounded bg-gray-600 border-gray-500 focus:ring-blue-500"
+                                       {% if student.id in students_in_class %}checked{% endif %}>
+                                <span>{{ student.username }} ({{ student.batch }})</span>
+                            </label>
+                        </li>
+                    {% endfor %}
+                </ul>
+                <button type="submit" class="w-full px-6 py-3 bg-green-600 hover:bg-green-700 rounded-lg transition-colors text-lg font-semibold">
+                    <i class="fas fa-check"></i> Add Selected Students
+                </button>
+            {% else %}
+                <p class="text-gray-400">No students available to add.</p>
+            {% endif %}
+        </form>
+    </div>
+    <script>
+        function filterStudents(selectedBatch, event) {
+            const students = document.querySelectorAll('.student-item');
+            const buttons = document.querySelectorAll('.batch-btn');
+
+            buttons.forEach(btn => btn.classList.remove('bg-yellow-600'));
+            event.currentTarget.classList.add('bg-yellow-600');
+
+            students.forEach(student => {
+                if (student.getAttribute('data-batch') === selectedBatch) {
+                    student.style.display = 'block';
+                } else {
+                    student.style.display = 'none';
+                }
+            });
+        }
+    </script>
+</body>
+</html>

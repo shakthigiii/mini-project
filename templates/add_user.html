@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Add New User</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <div class="max-w-xl mx-auto p-6">
+        <header class="bg-gray-800 p-4 rounded-lg shadow-lg mb-6 flex justify-between items-center">
+            <h1 class="text-xl font-bold text-yellow-400">Add New User</h1>
+            <a href="{{ url_for('admin_dashboard') }}" 
+               class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </header>
+
+        <div class="bg-gray-800 p-6 rounded-lg shadow-xl">
+            <form method="POST" class="space-y-4">
+                
+                <div>
+                    <label for="username" class="block text-sm font-medium mb-1">Username (e.g., College ID):</label>
+                    <input type="text" id="username" name="username" required 
+                           class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500">
+                </div>
+
+                <div>
+                    <label for="password" class="block text-sm font-medium mb-1">Temporary Password:</label>
+                    <input type="text" id="password" name="password" required 
+                           class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500">
+                </div>
+
+                <div>
+                    <label for="role" class="block text-sm font-medium mb-1">Role:</label>
+                    <select id="role" name="role" required onchange="toggleBatchField()"
+                            class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500">
+                        <option value="">--Select Role--</option>
+                        <option value="student">Student</option>
+                        <option value="faculty">Faculty</option>
+                    </select>
+                </div>
+
+                <div id="batch-field" style="display: none;">
+                    <label for="batch" class="block text-sm font-medium mb-1">Batch (e.g., ce_23-27):</label>
+                    <input type="text" id="batch" name="batch"
+                           class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500">
+                </div>
+
+                <button type="submit" class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors text-lg font-semibold mt-4">
+                    <i class="fas fa-user-plus"></i> Add User
+                </button>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        // JavaScript to show the batch field only for students
+        function toggleBatchField() {
+            var role = document.getElementById('role').value;
+            var batchField = document.getElementById('batch-field');
+            if (role === 'student') {
+                batchField.style.display = 'block';
+                document.getElementById('batch').setAttribute('required', 'required');
+            } else {
+                batchField.style.display = 'none';
+                document.getElementById('batch').removeAttribute('required');
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Add Questions to {{ quiz.title }}</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  </head>
+  <body class="bg-gray-900 text-white min-h-screen">
+    <div class="min-h-screen bg-gray-900 text-white">
+      <header class="bg-gray-800 border-b border-gray-700 p-6">
+        <div class="flex items-center justify-between">
+            <h1 class="text-3xl font-bold text-blue-400">Manage Questions</h1>
+            <a href="{{ url_for('faculty_dashboard') }}" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors">
+                <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
+            </a>
+        </div>
+      </header>
+
+      <main class="max-w-4xl mx-auto p-6">
+        <h2 class="text-2xl font-bold mb-4">Adding Questions for: <span class="text-blue-400">{{ quiz.title }}</span></h2>
+        
+        <p class="text-gray-400 mb-6">Select existing questions to add to this quiz.</p>
+
+        <form method="POST">
+            {% if questions_by_subject %}
+            <div id="subject-filter-container" class="space-y-4">
+                {% for subject, question_list in questions_by_subject.items() %}
+                    <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
+                        <div class="flex items-center justify-between cursor-pointer" onclick="toggleQuestions('{{ subject|replace(' ', '_') }}')">
+                            <h3 class="text-xl font-semibold">{{ subject }} ({{ question_list|length }} available)</h3>
+                            <i id="icon-{{ subject|replace(' ', '_') }}" class="fas fa-chevron-down transition-transform duration-300"></i>
+                        </div>
+
+                        <div id="questions-{{ subject|replace(' ', '_') }}" class="mt-4 space-y-2 hidden">
+                            {% for question in question_list %}
+                                <div class="bg-gray-700/50 p-3 rounded-md flex items-center space-x-3">
+                                    <input type="checkbox" 
+                                           name="question_ids" 
+                                           value="{{ question.id }}" 
+                                           class="form-checkbox text-blue-500 rounded bg-gray-600 border-gray-500 focus:ring-blue-500"
+                                           {% if question.is_assigned %}checked disabled{% endif %}>
+                                    <label class="text-sm flex-1">
+                                        {{ question.question_text }}
+                                        {% if question.is_assigned %}
+                                            <span class="text-xs text-red-400 ml-2">(Already in Quiz)</span>
+                                        {% endif %}
+                                    </label>
+                                    <a href="{{ url_for('create_question') }}" class="text-yellow-400 hover:text-yellow-300 text-sm">
+                                        Edit
+                                    </a>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+            
+            <button type="submit" class="w-full mt-6 px-6 py-3 bg-green-600 hover:bg-green-700 rounded-lg transition-colors text-lg font-semibold">
+                Add Selected Questions
+            </button>
+            {% else %}
+                <div class="bg-yellow-900/50 border border-yellow-600 p-4 rounded-lg text-yellow-200">
+                    <p>No questions available in the bank. Please <a href="{{ url_for('create_question') }}" class="font-bold underline">Create a New Question</a> first.</p>
+                </div>
+            {% endif %}
+        </form>
+      </main>
+    </div>
+
+    <script>
+        function toggleQuestions(subjectId) {
+            const container = document.getElementById('questions-' + subjectId);
+            const icon = document.getElementById('icon-' + subjectId);
+
+            if (container.classList.contains('hidden')) {
+                container.classList.remove('hidden');
+                icon.classList.add('rotate-180');
+            } else {
+                container.classList.add('hidden');
+                icon.classList.remove('rotate-180');
+            }
+        }
+    </script>
+  </body>
+</html>

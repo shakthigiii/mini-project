@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Results for {{ quiz.title }}</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  </head>
+  <body class="bg-gray-900 text-white min-h-screen">
+    <div id="root">
+      <header class="bg-gray-800 border-b border-gray-700 p-6">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center">
+            <h1 class="text-3xl font-bold text-blue-400">Quiz Results</h1>
+            <a href="{{ url_for('faculty_dashboard') }}" class="ml-6 px-4 py-2 text-gray-300 hover:text-white transition-colors">
+              Back to Dashboard
+            </a>
+          </div>
+          <div>
+            <span class="text-gray-300 mr-4">Welcome, {{ current_user.username }}</span>
+            <a href="{{ url_for('logout') }}"
+              class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors">
+              Logout
+            </a>
+          </div>
+        </div>
+      </header>
+      
+      <div class="p-6">
+        <h2 class="text-2xl font-bold mb-6">Results for: {{ quiz.title }}</h2>
+        
+        <!-- Scores Section -->
+        <div class="mb-8">
+            <h3 class="text-xl font-semibold mb-4">Scores</h3>
+            {% if results %}
+                <div class="grid gap-4">
+                    {% for result in results %}
+                        <div class="bg-gray-800 p-6 rounded-lg flex items-center justify-between">
+                            <span class="text-lg font-medium">{{ result.student.username }}</span>
+                            <span class="text-xl font-bold text-green-400">{{ result.score|round(2) }}%</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-gray-400">No students have completed this quiz yet.</p>
+            {% endif %}
+        </div>
+        
+        <!-- Non-Attenders Section -->
+        <div>
+            <h3 class="text-xl font-semibold mb-4">Students Who Did Not Attend</h3>
+            {% if non_attenders %}
+                <ul class="space-y-2">
+                    {% for student in non_attenders %}
+                        <li class="bg-gray-800 p-4 rounded-lg">
+                            <span class="text-lg font-medium">{{ student.username }}</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="text-gray-400">All assigned students have completed the quiz.</p>
+            {% endif %}
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

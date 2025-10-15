@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Assign Quiz: {{ quiz.title }}</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  </head>
+  <body class="bg-gray-900 text-white min-h-screen">
+    <div class="min-h-screen bg-gray-900 text-white">
+      <header class="bg-gray-800 border-b border-gray-700 p-6">
+        <div class="flex items-center justify-between">
+            <h1 class="text-3xl font-bold text-blue-400">Assign Quiz</h1>
+            <a href="{{ url_for('faculty_dashboard') }}" 
+               class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors">
+                <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
+            </a>
+        </div>
+      </header>
+
+      <main class="max-w-4xl mx-auto p-6">
+        <h2 class="text-2xl font-bold mb-4">Assigning: <span class="text-purple-400">{{ quiz.title }}</span></h2>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="p-3 rounded-lg text-sm mb-4 bg-yellow-600/30 text-yellow-200">
+                {{ message }}
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <div class="bg-gray-800 p-6 rounded-lg border border-gray-700">
+            <h3 class="text-xl font-semibold mb-4">Select Classes to Assign</h3>
+            
+            <form method="POST" id="assignment-form">
+                <input type="hidden" name="class_id" id="class_id_input" required>
+                
+                {% if classes %}
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        {% for class_obj in classes %}
+                            <button type="button" 
+                                    data-class-id="{{ class_obj.id }}"
+                                    data-class-name="{{ class_obj.name }}"
+                                    class="class-btn w-full px-4 py-3 bg-gray-700 hover:bg-blue-600 border border-gray-600 rounded-lg transition-colors text-lg font-semibold flex items-center justify-center space-x-2">
+                                <i class="fas fa-chalkboard-teacher"></i>
+                                <span>{{ class_obj.name }}</span>
+                            </button>
+                        {% endfor %}
+                    </div>
+                    
+                    <button type="submit" id="submit-assign" disabled
+                            class="w-full px-6 py-3 bg-green-600 hover:bg-green-700 rounded-lg transition-colors text-lg font-semibold disabled:bg-gray-600">
+                        Assign Quiz to Selected Class
+                    </button>
+                {% else %}
+                    <div class="bg-red-900/50 border border-red-600 p-4 rounded-lg text-red-200">
+                        <p>No classes available. Please ask an Admin to create classes.</p>
+                    </div>
+                {% endif %}
+            </form>
+        </div>
+      </main>
+    </div>
+
+    <script>
+        const classButtons = document.querySelectorAll('.class-btn');
+        const classIdInput = document.getElementById('class_id_input');
+        const submitButton = document.getElementById('submit-assign');
+        let selectedButton = null;
+
+        classButtons.forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault(); // Prevent form submission on button click
+
+                const classId = this.getAttribute('data-class-id');
+                
+                // Toggle selection logic
+                if (selectedButton === this) {
+                    // Deselect
+                    classIdInput.value = '';
+                    submitButton.disabled = true;
+                    this.classList.remove('bg-blue-600', 'border-blue-500');
+                    selectedButton = null;
+                } else {
+                    // Select new button
+                    if (selectedButton) {
+                        selectedButton.classList.remove('bg-blue-600', 'border-blue-500');
+                    }
+                    classIdInput.value = classId;
+                    submitButton.disabled = false;
+                    this.classList.add('bg-blue-600', 'border-blue-500');
+                    selectedButton = this;
+                }
+            });
+        });
+    </script>
+  </body>
+</html>
