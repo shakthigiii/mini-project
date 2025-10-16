@@ -1,5 +1,51 @@
 # routes.py
-from flask import render_template, request, redirect, url_for, flash, session
+from flask import render_template, request, redirect, url_for, flash, session, send_file, jsonify
+from flask_login import login_user, current_user, logout_user, login_required
+from app import app, db, bcrypt
+from models import *
+import io
+import pandas as pd
+import csv
+import openpyxl
+import random
+import json
+@app.route('/faculty/download_quiz_excel/<int:quiz_id>')
+@login_required
+def download_quiz_excel(quiz_id):
+    if not isinstance(current_user, Faculty):
+        flash('Access Denied', 'danger')
+        return redirect(url_for('dashboard'))
+
+    quiz = Quiz.query.get_or_404(quiz_id)
+    # Get all classes assigned to this quiz
+    assigned_classes = db.session.query(Class).join(QuizAssignment, QuizAssignment.class_id == Class.id).filter(QuizAssignment.quiz_id == quiz.id).all()
+
+    wb = openpyxl.Workbook()
+    wb.remove(wb.active)  # Remove default sheet
+
+    for class_obj in assigned_classes:
+        ws = wb.create_sheet(title=class_obj.name)
+        # Students who attended
+        results = QuizResult.query.filter_by(quiz_id=quiz.id).join(Student).join(ClassStudent, ClassStudent.student_id == Student.id).filter(ClassStudent.class_id == class_obj.id).order_by(Student.username).all()
+        ws.append(["Attended Students", "Score (%)"])
+        for result in results:
+            ws.append([result.student.username, round(result.score, 2)])
+
+        ws.append([])
+        # Students who did not attend
+        students_who_took_quiz = [result.student.id for result in results]
+        assigned_students = db.session.query(Student).join(ClassStudent, ClassStudent.student_id == Student.id).filter(ClassStudent.class_id == class_obj.id).all()
+        non_attenders = [s for s in assigned_students if s.id not in students_who_took_quiz]
+        ws.append(["Students Who Did Not Attend"])
+        for student in non_attenders:
+            ws.append([student.username])
+
+    # Save to BytesIO and send as file
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    filename = f"quiz_{quiz.id}_results.xlsx"
+    return send_file(output, as_attachment=True, download_name=filename, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 from flask_login import login_user, current_user, logout_user, login_required
 from app import app, db, bcrypt
 from models import *
@@ -409,6 +455,7 @@ def admin_dashboard():
 @app.route('/admin/add_user', methods=['GET', 'POST'])
 @login_required
 def add_user():
+    # ... (existing logic for single user/faculty addition) ...
     if not isinstance(current_user, Admin):
         flash('Access Denied', 'danger')
         return redirect(url_for('dashboard'))
@@ -417,30 +464,26 @@ def add_user():
         username = request.form.get('username')
         password = request.form.get('password')
         role = request.form.get('role')
-        batch = request.form.get('batch')
+        batch = request.form.get('batch') # Used only for student
 
-        if role == 'student':
-            existing_user = Student.query.filter_by(username=username).first()
-        elif role == 'faculty':
-            existing_user = Faculty.query.filter_by(username=username).first()
-        elif role == 'admin':
-            existing_user = Admin.query.filter_by(username=username).first()
-        else:
-            flash('Invalid role selected.', 'danger')
-            return redirect(url_for('add_user'))
-
-        if existing_user:
-            flash('Username already exists.', 'danger')
-            return redirect(url_for('add_user'))
+        # --- User Existence Check (Consolidated) ---
+        Model = {'student': Student, 'faculty': Faculty}.get(role)
+        if Model:
+            existing_user = Model.query.filter_by(username=username).first()
+            if existing_user:
+                flash(f'{role.capitalize()} username already exists.', 'danger')
+                return redirect(url_for('add_user'))
 
         hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
 
+        # --- Create User ---
         if role == 'student':
             new_user = Student(username=username, password_hash=hashed_password, batch=batch)
         elif role == 'faculty':
             new_user = Faculty(username=username, password_hash=hashed_password)
-        elif role == 'admin':
-            new_user = Admin(username=username, password_hash=hashed_password)
+        else:
+            flash('Invalid role specified.', 'danger')
+            return redirect(url_for('add_user'))
 
         db.session.add(new_user)
         db.session.commit()
@@ -449,6 +492,87 @@ def add_user():
         return redirect(url_for('admin_dashboard'))
 
     return render_template('add_user.html')
+
+# NEW ROUTE: Handles bulk CSV upload and student creation
+@app.route('/admin/add_batch_students', methods=['POST'])
+@login_required
+def add_batch_students():
+    if not isinstance(current_user, Admin):
+        flash('Access Denied', 'danger')
+        return redirect(url_for('dashboard'))
+
+    batch_name = request.form.get('batch_name')
+    csv_file = request.files.get('csv_file')
+    
+    if not batch_name or not csv_file:
+        flash('Missing batch name or file.', 'danger')
+        return redirect(url_for('add_user'))
+
+    filename = csv_file.filename
+    
+    # 1. Read File using Pandas
+    try:
+        # Use pandas to read both CSV and XLSX formats
+        if filename.endswith('.csv'):
+            # Read CSV directly
+            df = pd.read_csv(csv_file.stream)
+        elif filename.endswith(('.xlsx', '.xls')):
+            # Read Excel using openpyxl engine
+            # We must save the file temporarily for pandas to read the binary Excel stream reliably
+            df = pd.read_excel(csv_file.stream, engine='openpyxl')
+        else:
+            flash('Invalid file format. Must be CSV or XLSX.', 'danger')
+            return redirect(url_for('add_user'))
+
+        # Standardize column name lookup for PRN
+        # We try to find the 'PRN' column, converting names to uppercase for robustness
+        prn_column = next((col for col in df.columns if 'PRN' in col.upper()), None)
+        
+        if not prn_column:
+            raise ValueError("CSV/Excel file must contain a column named 'PRN'.")
+
+        # 2. Process DataFrame Rows
+        new_students = []
+        students_added_count = 0
+        
+        for index, row in df.iterrows():
+            prn = str(row[prn_column]).strip()
+            
+            if not prn or prn.lower() == 'nan': continue # Skip empty or invalid PRNs
+
+            existing_student = Student.query.filter_by(username=prn).first()
+            if existing_student:
+                continue 
+            
+            username = prn
+            password = prn 
+            
+            hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
+            
+            new_student = Student(
+                username=username,
+                password_hash=hashed_password,
+                batch=batch_name
+            )
+            new_students.append(new_student)
+            students_added_count += 1
+
+        # 3. Bulk Insert into Database
+        if new_students:
+            db.session.add_all(new_students)
+            db.session.commit()
+            flash(f'Successfully added {students_added_count} students to batch {batch_name}.', 'success')
+        else:
+            flash('No new students found in the file or all already exist.', 'info')
+
+    except ValueError as ve:
+        flash(f'File Error: {str(ve)}', 'danger')
+        return redirect(url_for('add_user'))
+    except Exception as e:
+        db.session.rollback()
+        flash(f'An unexpected error occurred during file processing: {str(e)}', 'danger')
+    
+    return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin/create_class', methods=['GET', 'POST'])
 @login_required
