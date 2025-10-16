@@ -29,6 +29,13 @@
       
       <div class="p-6">
         <h2 class="text-2xl font-bold mb-6">Results for: {{ quiz.title }}</h2>
+
+        <!-- Download Excel Button -->
+        <div class="mb-6">
+          <a href="{{ url_for('download_quiz_excel', quiz_id=quiz.id) }}" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-semibold transition-colors">
+            <i class="fa-solid fa-file-excel mr-2"></i>Download Excel
+          </a>
+        </div>
         
         <!-- Scores Section -->
         <div class="mb-8">

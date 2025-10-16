@@ -8,7 +8,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body class="bg-gray-900 text-white min-h-screen">
-    <div class="max-w-xl mx-auto p-6">
+    <div class="max-w-3xl mx-auto p-6">
         <header class="bg-gray-800 p-4 rounded-lg shadow-lg mb-6 flex justify-between items-center">
             <h1 class="text-xl font-bold text-yellow-400">Add New User</h1>
             <a href="{{ url_for('admin_dashboard') }}" 
@@ -18,45 +18,88 @@
         </header>
 
         <div class="bg-gray-800 p-6 rounded-lg shadow-xl">
-            <form method="POST" class="space-y-4">
-                
-                <div>
-                    <label for="username" class="block text-sm font-medium mb-1">Username (e.g., College ID):</label>
-                    <input type="text" id="username" name="username" required 
-                           class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500">
-                </div>
-
-                <div>
-                    <label for="password" class="block text-sm font-medium mb-1">Temporary Password:</label>
-                    <input type="text" id="password" name="password" required 
-                           class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500">
-                </div>
-
-                <div>
-                    <label for="role" class="block text-sm font-medium mb-1">Role:</label>
-                    <select id="role" name="role" required onchange="toggleBatchField()"
-                            class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500">
-                        <option value="">--Select Role--</option>
-                        <option value="student">Student</option>
-                        <option value="faculty">Faculty</option>
-                    </select>
-                </div>
-
-                <div id="batch-field" style="display: none;">
-                    <label for="batch" class="block text-sm font-medium mb-1">Batch (e.g., ce_23-27):</label>
-                    <input type="text" id="batch" name="batch"
-                           class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500">
-                </div>
-
-                <button type="submit" class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors text-lg font-semibold mt-4">
-                    <i class="fas fa-user-plus"></i> Add User
+            
+            <div class="flex border-b border-gray-700 mb-6">
+                <button id="tab-single" onclick="showTab('single')" 
+                        class="tab-btn px-4 py-2 text-sm font-medium border-b-2 border-yellow-500 text-yellow-400">
+                    Single User
                 </button>
-            </form>
+                <button id="tab-batch" onclick="showTab('batch')" 
+                        class="tab-btn px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-white">
+                    Batch Upload
+                </button>
+            </div>
+
+            <div id="content-single" class="tab-content">
+                <form method="POST" class="space-y-4">
+                    <h3 class="text-lg font-semibold mb-3">Add Faculty/Single Student</h3>
+                    
+                    <div>
+                        <label for="username" class="block text-sm font-medium mb-1">Username (e.g., College ID):</label>
+                        <input type="text" id="username" name="username" required 
+                               class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500">
+                    </div>
+
+                    <div>
+                        <label for="password" class="block text-sm font-medium mb-1">Temporary Password:</label>
+                        <input type="text" id="password" name="password" required 
+                               class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500">
+                    </div>
+
+                    <div>
+                        <label for="role" class="block text-sm font-medium mb-1">Role:</label>
+                        <select id="role" name="role" required onchange="toggleBatchField()"
+                                class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500">
+                            <option value="">--Select Role--</option>
+                            <option value="student">Student</option>
+                            <option value="faculty">Faculty</option>
+                        </select>
+                    </div>
+
+                    <div id="batch-field" style="display: none;">
+                        <label for="batch" class="block text-sm font-medium mb-1">Batch (e.g., ce_23-27):</label>
+                        <input type="text" id="batch" name="batch"
+                               class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500">
+                    </div>
+
+                    <button type="submit" class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors text-lg font-semibold mt-4">
+                        <i class="fas fa-user-plus"></i> Add User
+                    </button>
+                </form>
+            </div>
+
+            <div id="content-batch" class="tab-content hidden">
+                 <form method="POST" action="{{ url_for('add_batch_students') }}" enctype="multipart/form-data" class="space-y-4">
+                    <h3 class="text-lg font-semibold mb-3 text-green-400">Upload Student Batch</h3>
+                    
+                    <div>
+                        <label for="batch_name" class="block text-sm font-medium mb-1">Target Batch Name:</label>
+                        <input type="text" id="batch_name" name="batch_name" required 
+                               class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500"
+                               placeholder="e.g., IT_2025_A">
+                    </div>
+
+                    <div>
+                        <label for="csv_file" class="block text-sm font-medium mb-1">CSV/Excel File (PRN, Name, Email, Phone):</label>
+    <input type="file" id="csv_file" name="csv_file" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required 
+           class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                    </div>
+                    
+                    <button type="submit" class="w-full px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors text-lg font-semibold mt-4">
+                        <i class="fas fa-upload"></i> Upload & Add Batch
+                    </button>
+                </form>
+                
+                <div class="mt-6 p-4 bg-gray-700 rounded-lg text-sm text-gray-300 border border-gray-600">
+                    <p class="font-bold mb-1 text-red-300">Important Note:</p>
+                    <p>The **PRN** column will be used as the **Username** and **Password** for each student. Students should change their password immediately after first login.</p>
+                </div>
+            </div>
         </div>
     </div>
     
     <script>
-        // JavaScript to show the batch field only for students
+        // JS for single user form
         function toggleBatchField() {
             var role = document.getElementById('role').value;
             var batchField = document.getElementById('batch-field');
@@ -68,6 +111,25 @@
                 document.getElementById('batch').removeAttribute('required');
             }
         }
+
+        // JS for tab switching
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById('content-' + tabId).classList.remove('hidden');
+
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('border-yellow-500', 'text-yellow-400');
+                btn.classList.add('border-transparent', 'text-gray-400');
+            });
+            
+            const activeBtn = document.getElementById('tab-' + tabId);
+            activeBtn.classList.remove('border-transparent', 'text-gray-400');
+            activeBtn.classList.add('border-yellow-500', 'text-yellow-400');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            showTab('single'); // Default to showing the single user tab
+        });
     </script>
 </body>
 </html>
