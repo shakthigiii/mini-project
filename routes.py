@@ -1,3 +1,4 @@
+# Change Password Route (for students and teachers)
 # routes.py
 from flask import render_template, request, redirect, url_for, flash, session, send_file, jsonify
 from flask_login import login_user, current_user, logout_user, login_required
@@ -94,6 +95,30 @@ def logout():
     logout_user()
     return redirect(url_for('login_page'))
 
+@app.route('/change_password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    user = current_user
+    if request.method == 'POST':
+        current_password = request.form.get('current_password')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+
+        if not bcrypt.check_password_hash(user.password_hash, current_password):
+            flash('Current password is incorrect.', 'danger')
+            return render_template('change_password.html')
+        if new_password != confirm_password:
+            flash('New passwords do not match.', 'danger')
+            return render_template('change_password.html')
+        if len(new_password) < 6:
+            flash('New password must be at least 6 characters.', 'danger')
+            return render_template('change_password.html')
+
+        user.password_hash = bcrypt.generate_password_hash(new_password).decode('utf-8')
+        db.session.commit()
+        flash('Password changed successfully!', 'success')
+        return redirect(url_for('dashboard'))
+    return render_template('change_password.html')
 @app.route('/dashboard')
 @login_required
 def dashboard():
